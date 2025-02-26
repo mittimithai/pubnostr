@@ -18,9 +18,6 @@ const PaperQuery = () => {
 	try {
 	    const paperData = JSON.parse(localStorage.getItem(doi) || '{}');
 	    if (!paperData) return null;
-
-	    console.log(paperData)
-	    	    
 	    return paperData;
 	} catch (error) {
 	    console.error('Error reading from cache:', error);
@@ -30,7 +27,7 @@ const PaperQuery = () => {
 
     const cachePaper = (doi, paperData) => {
 	try {
-	    localStorage.setItem(doi, paperData);
+	    localStorage.setItem(doi, JSON.stringify(paperData));
 	} catch (error) {
 	    console.error('Error writing to cache:', error);
 	}
@@ -78,67 +75,68 @@ const PaperQuery = () => {
 	    setSearchError('');
 
 	    // Check cache first
-	    /*
+
+	    let fetchedPaper = null;
 	    const cachedPaper = getPaperFromCache(doi);
 	    if (cachedPaper) {
-		setPapers([cachedPaper]);
-		setIsLoading(false);
-		return;
-		}
-	    */
-	    
-	    // Set up timeout for the fetch
-	    const controller = new AbortController();
-	    const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+		fetchedPaper = cachedPaper;
+		setPapers([fetchedPaper]);
+	    } else {
+		// Set up timeout for the fetch
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-	    const response = await fetch(
-		`https://api.crossref.org/works/${encodeURIComponent(doi)}`,
-		{
-		    signal: controller.signal,
-		    headers: {
-			// Add email for CrossRef API tracking (better rate limits)
-			'User-Agent': 'PubNostr (mailto:your-email@example.com)'
+		const response = await fetch(
+		    `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+		    {
+			signal: controller.signal,
+			headers: {
+			    // Add email for CrossRef API tracking (better rate limits)
+			    'User-Agent': 'PubNostr (mailto:your-email@example.com)'
+			}
 		    }
+		);
+
+		clearTimeout(timeout);
+
+		if (!response.ok) {
+		    throw new Error(response.status === 404 ? 'DOI not found' : 
+				    `HTTP error! status: ${response.status}`);
 		}
-	    );
 
-	    clearTimeout(timeout);
+		const data = await response.json();
+		const work = data.message;
 
-	    if (!response.ok) {
-		throw new Error(response.status === 404 ? 'DOI not found' : 
-				`HTTP error! status: ${response.status}`);
+		// Validate required fields
+		if (!work.title || !work.title[0]) {
+		    throw new Error('Invalid paper data: missing title');
+		}
+
+		// Create paper object from CrossRef data
+		const newPaper = {
+		    id: doi,
+		    title: work.title[0],
+		    journal: work['container-title']?.[0] || 'Journal not specified',
+		    publishDate: work.published?.['date-parts']?.[0]?.[0] || 'Date not specified',
+		    authors: work.author?.map(a => `${a.given} ${a.family}`).join(', ') || 'Authors not specified',
+		    commentCount: 0,
+		    // Add more metadata that might be useful
+		    type: work.type || 'unknown',
+		    url: work.URL || null,
+		    abstract: work.abstract || null
+		};
+
+		// Cache the paper data
+		cachePaper(doi, newPaper);
+		fetchedPaper = newPaper;
 	    }
-
-	    const data = await response.json();
-	    const work = data.message;
-
-	    // Validate required fields
-	    if (!work.title || !work.title[0]) {
-		throw new Error('Invalid paper data: missing title');
-	    }
-
-	    // Create paper object from CrossRef data
-	    const newPaper = {
-		id: doi,
-		title: work.title[0],
-		journal: work['container-title']?.[0] || 'Journal not specified',
-		publishDate: work.published?.['date-parts']?.[0]?.[0] || 'Date not specified',
-		authors: work.author?.map(a => `${a.given} ${a.family}`).join(', ') || 'Authors not specified',
-		commentCount: 0,
-		// Add more metadata that might be useful
-		type: work.type || 'unknown',
-		url: work.URL || null,
-		abstract: work.abstract || null
-	    };
-
-	    // Cache the paper data
-	    cachePaper(doi, newPaper);
-	    setPapers([newPaper]);
-	    let newRecentPapers = recentPapers.filter(paper => paper[doi] !== newPaper.doi);
-	    console.log(newRecentPapers);
-	    newRecentPapers = [newPaper, ...newRecentPapers].slice(0,N_RECENT_PAPERS);
+	    setIsLoading(false);
+	    setPapers([fetchedPaper]);
+	    console.log(fetchedPaper);
+	    const  newRecentPapers = [fetchedPaper, ...recentPapers.filter(paper => paper[doi] !== newPaper.doi)].slice(0,N_RECENT_PAPERS);
 	    setRecentPapers(newRecentPapers);
-	
+	    
+	    
 	} catch (error) {
 	    setSearchError(handleCrossRefError(error, doi));
 	} finally {
@@ -159,18 +157,18 @@ const PaperQuery = () => {
 	if (isValidDOI(searchQuery.trim())) {
 	    await fetchPaperMetadata(searchQuery.trim());
 	} else {
-	   
+	    
 	    // Search in title, authors, and journal - really want to do this via google scholar or something
 	    /*
-	    const found = paperDatabase.filter(paper =>
-		paper.title.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-		    paper.authors.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-		    paper.journal.toLowerCase().includes(searchQuery.toLowerCase().trim())
-	    );
-	    setPapers(found);
-	    if (found.length === 0) {
-		setSearchError('No papers found matching your search');
-		}
+	      const found = paperDatabase.filter(paper =>
+	      paper.title.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+	      paper.authors.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+	      paper.journal.toLowerCase().includes(searchQuery.toLowerCase().trim())
+	      );
+	      setPapers(found);
+	      if (found.length === 0) {
+	      setSearchError('No papers found matching your search');
+	      }
 	    */
 	    setSearchError('No papers found matching your search');
 	}
@@ -232,7 +230,7 @@ const PaperQuery = () => {
 				    <span className="font-medium">{paper.commentCount}</span>
 				    <span className="ml-1">{paper.commentCount === 1 ? 'comment' : 'comments'}</span>
 				</div>
-				</div>				
+			    </div>				
 			</div>
 		    </Link>
 		))}

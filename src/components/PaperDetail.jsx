@@ -6,10 +6,10 @@ import { NoComment } from 'react-nocomment'
 const PaperDetail = () => {
     // Get DOI from URL params and decode it
     const { id: encodedDoi } = useParams();
-    console.log('Encoded DOI from params:', encodedDoi);
+
     
     const doi = encodedDoi ? decodeURIComponent(encodedDoi) : null;
-    console.log('Decoded DOI:', doi);
+
     
     const [paper, setPaper] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
