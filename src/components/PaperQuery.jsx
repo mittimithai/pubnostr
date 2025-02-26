@@ -134,7 +134,11 @@ const PaperQuery = () => {
 	    // Cache the paper data
 	    cachePaper(doi, newPaper);
 	    setPapers([newPaper]);
-	    setRecentPapers([newPaper, ...recentPapers].slice(0,N_RECENT_PAPERS));
+	    let newRecentPapers = recentPapers.filter(paper => paper[doi] !== newPaper.doi);
+	    console.log(newRecentPapers);
+	    newRecentPapers = [newPaper, ...newRecentPapers].slice(0,N_RECENT_PAPERS);
+	    setRecentPapers(newRecentPapers);
+	
 	} catch (error) {
 	    setSearchError(handleCrossRefError(error, doi));
 	} finally {
