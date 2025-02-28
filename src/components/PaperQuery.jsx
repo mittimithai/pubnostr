@@ -3,145 +3,22 @@ import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { BaseLayoutContext } from './BaseLayout'
 
+import {fetchPaperMetadata, isValidDOI, handleCrossRefError} from './../util/paper';
+
 const PaperQuery = () => {
     const N_RECENT_PAPERS=10;
-    const {recentPapers, setRecentPapers} =  useContext(BaseLayoutContext);
-    
+
     // All state declarations in one place at the top
+    const {recentPapers, setRecentPapers} =  useContext(BaseLayoutContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [papers, setPapers] = useState([]);
     const [searchError, setSearchError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-
-    const getPaperFromCache = (doi) => {
-	try {
-	    const paperData = JSON.parse(localStorage.getItem(doi) || '{}');
-	    if (!paperData) return null;
-	    return paperData;
-	} catch (error) {
-	    console.error('Error reading from cache:', error);
-	    return null;
-	}
-    };
-
-    const cachePaper = (doi, paperData) => {
-	try {
-	    localStorage.setItem(doi, JSON.stringify(paperData));
-	} catch (error) {
-	    console.error('Error writing to cache:', error);
-	}
-    };
-
-    // Improved error handling for CrossRef API
-    const handleCrossRefError = (error, doi) => {
-	console.error('CrossRef API error:', error);
-	
-	if (error.name === 'AbortError') {
-	    return 'Request timed out. Please try again.';
-	}
-	
-	if (!navigator.onLine) {
-	    return 'No internet connection. Please check your connection and try again.';
-	}
-
-	if (error.message === 'DOI not found') {
-	    return `Could not find paper with DOI: ${doi}. Please verify the DOI is correct.`;
-	}
-
-	if (error.message.includes('rate limit')) {
-	    return 'Too many requests. Please wait a moment and try again.';
-	}
-
-	return 'An error occurred while fetching the paper information. Please try again later.';
-    };
-
-    // Basic DOI validation
-    const isValidDOI = (doi) => {
-	// This is a basic check - you might want to use a more sophisticated regex
-	return doi.startsWith('10.') && doi.includes('/');
-    };
-
     // Handle search input change
     const handleSearchChange = (e) => {
 	setSearchQuery(e.target.value);
 	setSearchError('');
-    };
-
-    // Fetch paper metadata from CrossRef with timeout and caching
-    const fetchPaperMetadata = async (doi) => {
-	try {
-	    setIsLoading(true);
-	    setSearchError('');
-
-	    // Check cache first
-
-	    let fetchedPaper = null;
-	    const cachedPaper = getPaperFromCache(doi);
-	    if (cachedPaper) {
-		fetchedPaper = cachedPaper;
-		setPapers([fetchedPaper]);
-	    } else {
-		// Set up timeout for the fetch
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-		const response = await fetch(
-		    `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
-		    {
-			signal: controller.signal,
-			headers: {
-			    // Add email for CrossRef API tracking (better rate limits)
-			    'User-Agent': 'PubNostr (mailto:your-email@example.com)'
-			}
-		    }
-		);
-
-		clearTimeout(timeout);
-
-		if (!response.ok) {
-		    throw new Error(response.status === 404 ? 'DOI not found' : 
-				    `HTTP error! status: ${response.status}`);
-		}
-
-		const data = await response.json();
-		const work = data.message;
-
-		// Validate required fields
-		if (!work.title || !work.title[0]) {
-		    throw new Error('Invalid paper data: missing title');
-		}
-
-		// Create paper object from CrossRef data
-		const newPaper = {
-		    id: doi,
-		    title: work.title[0],
-		    journal: work['container-title']?.[0] || 'Journal not specified',
-		    publishDate: work.published?.['date-parts']?.[0]?.[0] || 'Date not specified',
-		    authors: work.author?.map(a => `${a.given} ${a.family}`).join(', ') || 'Authors not specified',
-		    commentCount: 0,
-		    // Add more metadata that might be useful
-		    type: work.type || 'unknown',
-		    url: work.URL || null,
-		    abstract: work.abstract || null
-		};
-
-		// Cache the paper data
-		cachePaper(doi, newPaper);
-		fetchedPaper = newPaper;
-	    }
-	    setIsLoading(false);
-	    setPapers([fetchedPaper]);
-	    console.log(fetchedPaper);
-	    const  newRecentPapers = [fetchedPaper, ...recentPapers.filter(paper => paper[doi] !== newPaper.doi)].slice(0,N_RECENT_PAPERS);
-	    setRecentPapers(newRecentPapers);
-	    
-	    
-	} catch (error) {
-	    setSearchError(handleCrossRefError(error, doi));
-	} finally {
-	    setIsLoading(false);
-	}
     };
 
     // Handle search submission
@@ -155,7 +32,21 @@ const PaperQuery = () => {
 
 	// If it looks like a DOI, fetch metadata from CrossRef
 	if (isValidDOI(searchQuery.trim())) {
-	    await fetchPaperMetadata(searchQuery.trim());
+	    const doi = searchQuery.trim()
+	    
+	    setIsLoading(true);
+	    let fetchedPaper = {};
+	    setSearchError('');
+	    try{
+		fetchedPaper=await fetchPaperMetadata(doi);
+	    } catch(error) {
+		setSearchError(handleCrossRefError(error, doi));
+	    }
+	    setIsLoading(false);
+	    setPapers([fetchedPaper]);
+	    const  newRecentPapers = [fetchedPaper, ...recentPapers.filter(paper => paper[doi] !== fetchedPaper.doi)].slice(0,N_RECENT_PAPERS);
+	    setRecentPapers(newRecentPapers);
+
 	} else {
 	    
 	    // Search in title, authors, and journal - really want to do this via google scholar or something
@@ -209,7 +100,7 @@ const PaperQuery = () => {
 	    <div className="space-y-4">
 		{papers.map(paper => (
 		    <Link 
-			to={`/paper/${encodeURIComponent(paper.id)}`} 
+			to={{pathname:`/paper/${encodeURIComponent(paper.id)}`, state:{paper:paper}}} 
 			key={paper.id} 
 			className="block bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow"
 		    >

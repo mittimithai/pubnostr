@@ -15,6 +15,14 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+   --ztr-font: 'Roboto', sans-serif;
+   --ztr-font-size: 16px;
+   --ztr-text-color: #333333;
+   --ztr-link-color: #1d9bf0;
+   --ztr-background-color: #aaaaaa;
+   --ztr-icon-color: #4a4a4a;
+   --ztr-login-button-color: #8c52ff;
 }
 
 a {
