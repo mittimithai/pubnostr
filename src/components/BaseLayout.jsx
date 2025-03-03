@@ -19,26 +19,26 @@ const BaseLayout = () => {
 				</Link>
 			    </div>
 
-			    <div className="col-start-10 col-end-110">
+			    <div className="col-start-11 col-end-11">
 				<Link to="/about">
 				    <h2 className="text-lg text-gray-800">About</h2>
 				</Link>
 			    </div>
 
-			    <div className="col-start-11 col-end-11">
+			    <div className="col-start-12 col-end-12">
 				<Link to="/faq">
 				    <h2 className="text-lg text-gray-800">FAQ</h2>
 				</Link>
 			    </div>
 
-
+			    {/*
 			    <div className="col-start-12 col-end-12">
 				<button className="bg-blue-600 text-white rounded-md hover:bg-blue-700">
 				    <LogIn className="w-4 h-4" />
 				    Login
 				</button>
 			    </div>
-			    
+			     */}
 			</div>
 		    </header>
 

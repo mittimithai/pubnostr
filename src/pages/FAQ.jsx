@@ -4,9 +4,15 @@ const FAQ = () => {
 	    <div className="font-semibold text-gray-800 mb-3">
 
 		<h2>What is does this site do?</h2>
-		<p className="font-normal">PubNostr aims to be a <a href="http://pubpeer.com">PubPeer</a> workalike based on <a href = "https://nostr.com/">Nostr</a>. Something better is needed, I really don't yet know if the  Nostr-verse will really really work here, but I hope it does.</p>
+		<p className="font-normal">PubNostr aims to be a <a href="http://pubpeer.com">PubPeer</a> workalike based on <a href = "https://nostr.com/">Nostr</a>, a decentralized censorship resistant platform. Something better is needed, I really don't yet know if the  nostr-verse will really really work here, but I hope it does. The main work here is being done by <a href="https://github.com/franzaps/zapthreads">ZapThreads</a>.</p>
 		    <br />
-		    
+		    <h2>How do I login?</h2>
+		<p className="font-normal">You don't really (not yet at least). Nostr is a decentralized protocol that uses <a href="https://en.wikipedia.org/wiki/Public-key_cryptography">public-private key pairs</a>. What this means is that there is no real central user database, your key pair (which you can generate on your own machine) is all you need. Your public key is like your username, everyone can see it, but only you can sign messages with your private key that only you should know. You have to remember to treat your private key like a very very very precious password, no one can recover your private key for you if you lose it. There are numerous extensions that make generating/using keys to sign etc. easier, e.g., <a href="https://github.com/fiatjaf/nos2x">nos2x</a>.</p>
+		    <br />
+		    <p className="font-normal">I would like to implement a modern personalized "feed" in PubNostr to make it more fun to discover interesting scientific discussions. This will require somesort of login, the exact way this gets implemented will depend on what is available out there in the nostr-verse which is still in the process of formation.</p>
+		    <br />
+	    <p className="font-normal">Once you make your first post somewhere on PubNostr, I should see it on the relay and if you aren't spam, I should approve you for posting.  We are stil very much in pre alpha, so please do post but keep copies for now as the site may change in unpredictable ways for a bit.</p>
+		    <br />
 		<h2>What's really wrong with PubPeer?</h2>
 		    <p className="font-normal">Pubpeer has a number of deficiences. I long stopped using it (the interface has barely changed since its inception) and it stopped being fun. Here is a short list of some of its biggest problems:</p>
 		    <br />
